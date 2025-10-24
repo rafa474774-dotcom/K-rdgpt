@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KÜRDGPT PRO - AI Kod, Görsel ve Rapor</title>
+    <!-- Tailwind CSS Yüklemesi -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts2.google.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+        }
+        .chat-container {
+            max-width: 768px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding-bottom: 12rem; /* Giriş ve mod seçimi için yer bırakma */
+        }
+        .message {
+            max-width: 85%;
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border-radius: 1.5rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+            white-space: pre-wrap; /* Metin formatını korur (özellikle kod için) */
+        }
+        .user-message {
+            background-color: #4f46e5;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.5rem;
+        }
+        .assistant-message {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            align-self: flex-start;
+            border-bottom-left-radius: 0.5rem;
+        }
+        .image-message {
+            background-color: #059669; /* Zümrüt Yeşili */
+            padding: 0.5rem;
+            border-radius: 1rem;
+            align-self: flex-start;
+            display: flex;
+            flex-direction: column;
+        }
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #1a202c;
+            border-top: 1px solid #2d3748;
+            padding: 1rem;
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -2px rgba(0, 0, 0, 0.06);
+            z-index: 10;
+        }
+        .tts-button {
+            cursor: pointer;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+            transition: color 0.15s;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+
+    <!-- Başlık Bölümü ve Ayarlar Butonu -->
+    <header class="p-4 text-center text-white bg-gray-900 shadow-md sticky top-0 z-20 rounded-b-lg flex justify-between items-center">
+        <!-- Ayarlar Butonu -->
+        <button onclick="toggleSettingsModal(true)" class="p-2 text-gray-400 hover:text-indigo-400 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.78 1.35a2 2 0 0 0 .73 2.73l.15.08a2 2 0 0 1 1 1.73v.44a2 2 0 0 1-1 1.73l-.15.08a2 2 0 0 0-.73 2.73l.78 1.35a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 1-1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.78-1.35a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.73v-.44a2 2 0 0 1 1-1.73l.15-.08a2 2 0 0 0 .73-2.73l-.78-1.35a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-1 1.73v-.18a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+
+        <!-- Başlık -->
+        <div class="flex-grow text-center">
+            <h1 class="text-3xl font-extrabold text-indigo-400">KÜRDGPT <span class="text-sm align-top text-yellow-400">PRO</span></h1>
+        </div>
+        
+        <!-- Boşluk Bırakıcı -->
+        <div class="w-8"></div> 
+    </header>
+
+    <!-- Hata Mesajı Alanı -->
+    <div id="errorAlert" class="hidden bg-red-800 text-white p-3 rounded-lg mx-4 mt-4 shadow-xl z-20 sticky top-[4.5rem]">
+        <div class="flex items-center justify-between">
+            <span id="errorText" class="font-medium"></span>
+            <button onclick="document.getElementById('errorAlert').classList.add('hidden')" class="ml-4 text-red-200 hover:text-white font-bold text-lg">
+                &times;
+            </button>
+        </div>
+    </div>
+
+    <!-- Mesaj Geçmişi -->
+    <div id="chatHistory" class="flex-grow p-4 space-y-4 pt-8">
+        <div class="message assistant-message">
+            <p><span class="text-green-300 font-bold">Silav!</span> Ez KÜRDGPT PRO me. Zimanê min yê sereke Kurdî ye, lê ez dikarim bi Tirkî û zimanên din jî alîkariya te bikim. Heke tu bixwazî, bi Tirkî jî dikarim bersiv bidim. (Merhaba! Ana dilim Kürtçe'dir, ama istersen Türkçe de yanıt verebilirim.) <span class="text-yellow-400 font-extrabold block mt-2">✨ GÖRSEL ÜRETME TALİMATI: Görsel oluşturma özelliğini kullanmak için alttaki menüden "🎨 Görsel Üret" modunu seçin ve görseli İngilizce olarak detaylı tarif edin. ✨</span></p>
+        </div>
+    </div>
+
+    <!-- Yükleniyor Durumu (Gizli) -->
+    <div id="loadingIndicator" class="hidden text-center p-4 text-indigo-400 font-semibold mt-4">
+        <svg class="animate-spin h-5 w-5 mr-3 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        İşlem yapılıyor... Lütfen bekleyin.
+    </div>
+</div>
+
+<!-- Giriş Alanı ve Mod Seçiciler -->
+<div class="input-area">
+    
+    <!-- Mod Seçici (Tüm Pro Özellikler) -->
+    <div class="max-w-3xl mx-auto flex justify-around mb-3 p-2 bg-gray-800 rounded-xl border border-gray-700 space-x-2 overflow-x-auto">
+        <button id="textMode" onclick="setMode('TEXT')" class="flex-1 p-2 text-center rounded-lg font-semibold text-sm whitespace-nowrap bg-indigo-600 transition duration-200">
+            <span class="mr-1">✍️</span> Sohbet
+        </button>
+        <button id="codeMode" onclick="setMode('CODE')" class="flex-1 p-2 text-center rounded-lg font-semibold text-sm whitespace-nowrap text-gray-400 hover:bg-gray-700 transition duration-200">
+            <span class="mr-1">💻</span> Kod Yaz
+        </button>
+        <button id="visualInputMode" onclick="setMode('VISUAL_INPUT')" class="flex-1 p-2 text-center rounded-lg font-semibold text-sm whitespace-nowrap text-gray-400 hover:bg-gray-700 transition duration-200">
+            <span class="mr-1">👁️</span> Görsel Analiz
+        </button>
+        <button id="imageGenMode" onclick="setMode('IMAGE_GEN')" class="flex-1 p-2 text-center rounded-lg font-semibold text-sm whitespace-nowrap text-gray-400 hover:bg-gray-700 transition duration-200">
+            <span class="mr-1">🎨</span> Görsel Üret
+        </button>
+        <button id="pdfReportMode" onclick="setMode('PDF_REPORT')" class="flex-1 p-2 text-center rounded-lg font-semibold text-sm whitespace-nowrap text-gray-400 hover:bg-gray-700 transition duration-200">
+            <span class="mr-1">📄</span> Rapor Oluştur
+        </button>
+        <button id="videoScriptMode" onclick="setMode('VIDEO_SCRIPT')" class="flex-1 p-2 text-center rounded-lg font-semibold text-sm whitespace-nowrap text-gray-400 hover:bg-gray-700 transition duration-200">
+            <span class="mr-1">🎬</span> Video Script
+        </button>
+    </div>
+
+    <div class="max-w-3xl mx-auto flex space-x-3">
+        <!-- Görsel Yükle Butonu (Dosya Seçimini Gizler) -->
+        <label id="fileInputLabel" for="fileInput" class="hidden p-3 border border-gray-600 rounded-xl bg-gray-700 text-white flex items-center justify-center cursor-pointer transition duration-150 hover:bg-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-plus"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="M16 19l-3-3-3 4"/><path d="M6 8h.01"/><path d="M17 5h4"/><path d="M19 3v4"/></svg>
+        </label>
+        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+
+        <textarea id="userInput" rows="1" class="flex-grow p-3 border border-gray-600 rounded-xl bg-gray-800 text-white focus:ring-2 focus:ring-indigo-500 resize-none overflow-hidden" placeholder="Mesajınızı buraya yazın..." oninput="autoExpand(this)"></textarea>
+        
+        <button id="sendButton" onclick="handleSend()" class="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-150 disabled:bg-indigo-400 flex items-center justify-center">
+            Gönder
+        </button>
+    </div>
+
+    <!-- Yüklenen Görsel Önizlemesi (Visual Input Modu için) -->
+    <div id="imagePreviewContainer" class="max-w-3xl mx-auto mt-3 hidden flex items-center p-2 bg-gray-700 rounded-xl">
+        <img id="imagePreview" class="w-12 h-12 object-cover rounded-md mr-3 border border-gray-600">
+        <span id="imageFileName" class="text-sm text-gray-300 truncate"></span>
+        <button onclick="clearImage()" class="ml-auto text-red-400 hover:text-red-500 p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+    </div>
+</div>
+
+<!-- Ayarlar Modalı (Modal) -->
+<div id="settingsModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="toggleSettingsModal(false)">
+    <div class="bg-gray-800 rounded-xl p-8 w-full max-w-sm shadow-2xl" onclick="event.stopPropagation()">
+        <h2 class="text-3xl font-bold text-indigo-400 mb-6 border-b border-gray-700 pb-2">Ayarlar ve Hazırlayan</h2>
+        
+        <div class="space-y-4">
+            <div class="p-3 bg-gray-700 rounded-lg">
+                <p class="text-gray-400 text-sm">Proje Hazırlayan</p>
+                <p class="text-xl font-semibold text-white">RIZGAR AKAN</p>
+            </div>
+            
+            <div class="p-3 bg-gray-700 rounded-lg">
+                <p class="text-gray-400 text-sm">Versiyon</p>
+                <p class="text-white">KÜRDGPT PRO (v3.0 - Pirzimanî)</p>
+            </div>
+        </div>
+        
+        <button onclick="toggleSettingsModal(false)" class="mt-8 w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition duration-150">
+            Kapat
+        </button>
+    </div>
+</div>
+
+
+<script type="module">
+    // UI Elementleri
+    const chatHistory = document.getElementById('chatHistory');
+    const userInput = document.getElementById('userInput');
+    const sendButton = document.getElementById('sendButton');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const fileInput = document.getElementById('fileInput');
+    const fileInputLabel = document.getElementById('fileInputLabel');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageFileName = document.getElementById('imageFileName');
+    const settingsModal = document.getElementById('settingsModal');
+    const errorAlert = document.getElementById('errorAlert');
+    const errorText = document.getElementById('errorText');
+
+    // Mod Düğmeleri
+    const modeButtons = {
+        TEXT: document.getElementById('textMode'),
+        CODE: document.getElementById('codeMode'),
+        VISUAL_INPUT: document.getElementById('visualInputMode'),
+        IMAGE_GEN: document.getElementById('imageGenMode'),
+        PDF_REPORT: document.getElementById('pdfReportMode'),
+        VIDEO_SCRIPT: document.getElementById('videoScriptMode'),
+    };
+
+    // Durum Değişkenleri
+    let currentMode = 'TEXT';
+    let uploadedImageBase64 = null; 
+
+    // API Yapılandırması
+    const TEXT_MODEL = 'gemini-2.5-flash-preview-09-2025';
+    const TTS_MODEL = 'gemini-2.5-flash-preview-tts';
+    const IMAGE_MODEL = 'imagen-3.0-generate-002';
+    const apiKey = "AIzaSyDkvG09RNMgK6caw9fsOpk8326fs7ny0W8"; // Canvas tarafından sağlanacak
+
+    // --- GENEL YARDIMCI FONKSİYONLAR ---
+
+    window.toggleSettingsModal = (show) => {
+        settingsModal.classList.toggle('hidden', !show);
+    };
+
+    const displayAlert = (message) => {
+        errorText.textContent = message;
+        errorAlert.classList.remove('hidden');
+        // 8 saniye sonra otomatik gizle
+        setTimeout(() => {
+            errorAlert.classList.add('hidden');
+        }, 8000);
+    };
+
+    // Mod Değiştirme Fonksiyonu
+    window.setMode = (mode) => {
+        currentMode = mode;
+        clearImage(); // Mod değiştiğinde görseli sıfırla
+
+        Object.keys(modeButtons).forEach(key => {
+            const btn = modeButtons[key];
+            if (key === mode) {
+                btn.classList.add('bg-indigo-600', 'text-white');
+                btn.classList.remove('text-gray-400', 'hover:bg-gray-700');
+            } else {
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.add('text-gray-400', 'hover:bg-gray-700');
+            }
+        });
+
+        // Görsel Yükleme Butonunun görünürlüğünü ve placeholder'ı ayarla
+        fileInputLabel.classList.add('hidden');
+        if (mode === 'VISUAL_INPUT') {
+            fileInputLabel.classList.remove('hidden');
+            userInput.placeholder = "Görsel hakkında sorunuzu buraya yazın...";
+        } else if (mode === 'CODE') {
+            userInput.placeholder = "Hangi dilde, ne tür bir kod yazmamı istiyorsunuz? (Örn: 'Python ile hızlı sıralama algoritması yaz')";
+        } else if (mode === 'IMAGE_GEN') {
+            // GÜNCELLEME: Görsel istemi uyarısı daha güçlü yapıldı.
+            userInput.placeholder = "🎨 GÖRSEL MODU: Lütfen görseli İNGİLİZCE ve ÇOK detaylı tarif edin. (Örn: 'A detailed oil painting of a futuristic city skyline...')";
+        } else if (mode === 'PDF_REPORT') {
+            userInput.placeholder = "Rapor konusunu detaylıca yazın. (Örn: 'Türkiye'deki yapay zeka pazarının 2024 analizi')";
+        } else if (mode === 'VIDEO_SCRIPT') {
+            userInput.placeholder = "Oluşturulacak video konusunu ve süresini belirtin. (Örn: 'Mars'a ilk insan yolculuğu hakkında 60 saniyelik YouTube videosu')";
+        } else {
+            userInput.placeholder = "Mesajınızı buraya yazın...";
+        }
+    };
+
+    // Otomatik Yüksekliği Ayarlama
+    window.autoExpand = (field) => {
+        field.style.height = 'auto'; 
+        field.style.height = (field.scrollHeight) + 'px';
+    };
+
+    // Chat Geçmişini aşağı kaydırma
+    const scrollToBottom = () => {
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    };
+    
+    // Mesajı UI'ya ekleme (TTS butonu desteği ile)
+    const displayMessage = (sender, content, isImage = false, isLatex = false) => {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}-message ${isImage ? 'image-message' : ''}`;
+        
+        if (isImage) {
+            const img = document.createElement('img');
+            img.src = content;
+            img.className = "rounded-lg w-full max-h-96 object-contain";
+            messageDiv.appendChild(img);
+        } else {
+            const p = document.createElement('p');
+            
+            if (isLatex) {
+                // LaTeX kodunu gösterirken daha net bir kopya alanı ve uyarı veriyoruz
+                p.innerHTML = `<span class="font-bold text-yellow-300">Rapor Oluşturuldu.</span> Lütfen aşağıdaki LaTeX kodunu kopyalayıp editöre yapıştırarak PDF önizlemesini görün: <pre class="bg-gray-900 p-3 rounded-lg mt-2 text-xs overflow-x-auto">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+            } else {
+                // Normal metin ve kod blokları için (pre-wrap stilini kullanırız)
+                p.textContent = content;
+            }
+            
+            // TTS butonu ekleme (sadece asistan metin mesajları için)
+            if (sender === 'assistant' && !isLatex) {
+                const ttsButton = document.createElement('button');
+                ttsButton.className = 'tts-button text-white hover:text-green-300';
+                ttsButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 inline-block"><path d="M11.536 2.455a1.002 1.002 0 0 0-.866 0l-7.5 4.5a1.001 1.001 0 0 0-.5.866V18.18a1.002 1.002 0 0 0 .5.867l7.5 4.5a1.001 1.001 0 0 0 .866 0l7.5-4.5a1.001 1.001 0 0 0 .5-.866V7.82a1.002 1.002 0 0 0-.5-.867l-7.5-4.5Z" /><path fill-rule="evenodd" d="M12.558 17.526a1.001 1.001 0 0 1-1.002 0l-3-1.732a.5.5 0 0 1 .5-.866l3 1.732a.5.5 0 0 1 .5.866Z" clip-rule="evenodd" /></svg>`;
+                ttsButton.title = 'Metni Seslendir';
+                ttsButton.onclick = () => generateTTSAndPlay(content, ttsButton);
+                
+                p.appendChild(ttsButton);
+            }
+            messageDiv.appendChild(p);
+        }
+
+        chatHistory.appendChild(messageDiv);
+        scrollToBottom();
+    };
+
+    // --- GÖRSEL YÜKLEME VE ANALİZ ---
+
+    window.handleFileSelect = (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+            clearImage();
+            return;
+        }
+
+        imageFileName.textContent = file.name;
+        imagePreview.src = URL.createObjectURL(file);
+        imagePreviewContainer.classList.remove('hidden');
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            uploadedImageBase64 = e.target.result.split(',')[1];
+        };
+        reader.readAsDataURL(file);
+    };
+
+    window.clearImage = () => {
+        uploadedImageBase64 = null;
+        fileInput.value = '';
+        imagePreviewContainer.classList.add('hidden');
+        imagePreview.src = '';
+    };
+
+    async function generateVisualQuery(prompt, base64Data) {
+        const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL}:generateContent?key=${apiKey}`;
+        const mimeType = fileInput.files[0]?.type || 'image/png';
+        
+        const systemPrompt = "Tu KÜRDGPT PRO yî, arîkarê herî pêşketî yê zimanê Kurdî (Kurmancî) yî. Zimanê te yê sereke Kurdî ye. Her gava ku bikarhêner bi Kurdî binivîse, tu bi Kurdî bersiv didî. Lê heke bikarhêner bi zimanekî din (wek Tirkî, Îngilîzî) pirs bike û bixwaze, tu yê bi wî zimanî jî bersiv bidî. Bersivên te divê berfireh, rast û profesyonel bin. Wekî pisporê analîza dîtbarî, divê tu bi hûrgilî bersiva pirsên di derbarê wêneya barkirî de bidî.";
+        
+
+        const payload = {
+            contents: [{
+                role: "user",
+                parts: [
+                    { text: prompt },
+                    { inlineData: { mimeType: mimeType, data: base64Data } }
+                ]
+            }],
+            systemInstruction: {
+                parts: [{ text: systemPrompt }]
+            },
+        };
+
+        const options = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        };
+
+        try {
+            const response = await fetchWithBackoff(textApiUrl, options);
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "Görsel analizi sırasında yanıt alınamadı.";
+            displayMessage('assistant', text);
+        } catch (error) {
+            console.error("Görsel Analizi Hatası:", error);
+            displayAlert("Görsel Analizi sırasında kritik bir hata oluştu. Lütfen konsol loglarını kontrol edin.");
+            displayMessage('assistant', "Görsel analizi servisine ulaşılamadı. Birkaç dakika sonra tekrar deneyin.");
+        }
+    }
+    
+    // --- GECİKMELİ TEKRAR DENEME FONKSİYONU ---
+    async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url, options);
+                if (response.status === 429) { // Too Many Requests
+                    if (i < retries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response;
+            } catch (error) {
+                if (i === retries - 1) {
+                    displayAlert(`Kritik Ağ Hatası: API'ye ulaşılamadı. (${error.message})`);
+                    throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
+        }
+    }
+
+
+    // --- PRO FONKSİYON 1: METİN SESLENDİRME (TTS) ---
+
+    // PCM'den WAV'a dönüştürme yardımcıları (Stabilite için kritik)
+    function base64ToArrayBuffer(base64) {
+        const binaryString = atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    }
+
+    function pcmToWav(pcm16, sampleRate) {
+        const numChannels = 1;
+        const bitsPerSample = 16;
+        const byteRate = numChannels * sampleRate * (bitsPerSample / 8);
+        const blockAlign = numChannels * (bitsPerSample / 8);
+
+        const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+        const view = new DataView(buffer);
+
+        // RIFF chunk descriptor
+        writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + pcm16.length * 2, true);
+        writeString(view, 8, 'WAVE');
+
+        // FMT sub-chunk
+        writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitsPerSample, true);
+
+        // DATA sub-chunk
+        writeString(view, 36, 'data');
+        view.setUint32(40, pcm16.length * 2, true);
+
+        // PCM data
+        let offset = 44;
+        for (let i = 0; i < pcm16.length; i++, offset += 2) {
+            view.setInt16(offset, pcm16[i], true);
+        }
+
+        return new Blob([view], { type: 'audio/wav' });
+    }
+
+    window.generateTTSAndPlay = async (text, button) => {
+        button.disabled = true;
+        button.classList.add('animate-pulse');
+        button.title = 'Seslendiriliyor...';
+
+        const ttsApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent?key=${apiKey}`;
+
+        const payload = {
+            contents: [{ parts: [{ text: text }] }],
+            generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                    // Kullanıcı Kürtçe veya Türkçe konuşuyorsa bu ses tonu uygundur.
+                    voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } 
+                }
+            },
+            model: TTS_MODEL
+        };
+
+        try {
+            const response = await fetchWithBackoff(ttsApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const result = await response.json();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+
+            if (audioData) {
+                const mimeType = part.inlineData.mimeType;
+                const match = mimeType.match(/rate=(\d+)/);
+                const sampleRate = match ? parseInt(match[1], 10) : 16000;
+                
+                const pcmData = base64ToArrayBuffer(audioData);
+                const pcm16 = new Int16Array(pcmData);
+                
+                const wavBlob = pcmToWav(pcm16, sampleRate);
+                const audioUrl = URL.createObjectURL(wavBlob);
+                
+                const audio = new Audio(audioUrl);
+                audio.play();
+
+                audio.onended = () => {
+                    button.disabled = false;
+                    button.classList.remove('animate-pulse');
+                    button.title = 'Metni Seslendir';
+                    URL.revokeObjectURL(audioUrl);
+                };
+            } else {
+                displayMessage('assistant', "Seslendirme servisi yanıt veremedi veya metin çok uzun.");
+            }
+
+        } catch (error) {
+            console.error("TTS Çağrısı Hatası:", error);
+            displayAlert("TTS sırasında kritik bir hata oluştu. Lütfen konsol loglarını kontrol edin.");
+            displayMessage('assistant', "Seslendirme sırasında bir hata oluştu.");
+        } finally {
+            if (!button.disabled) {
+                button.disabled = false;
+                button.classList.remove('animate-pulse');
+                button.title = 'Metni Seslendir';
+            }
+        }
+    };
+
+
+    // --- PRO FONKSİYON 2: GÖRSEL ÜRETİM ---
+
+    async function generateImage(prompt) {
+        // GÜNCELLEME: Kullanıcıya bilgilendirme metni daha güçlü yapıldı
+        const instructionMessage = `Görsel Modu: İsteminiz ('${prompt}') işleniyor. **LÜTFEN** daima İngilizce ve görseli detaylıca tarif ederek en iyi sonucu almayı hedefleyin (Örn: sanatsal stil, renkler, ışıklandırma).`;
+        displayMessage('assistant', instructionMessage);
+
+
+        const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:predict?key=${apiKey}`;
+        const payload = {
+            instances: [{ prompt: prompt }],
+            parameters: { "sampleCount": 1 }
+        };
+
+        try {
+            const response = await fetchWithBackoff(imageApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                const base64Data = result.predictions[0].bytesBase64Encoded;
+                const imageUrl = `data:image/png;base64,${base64Data}`;
+                displayMessage('assistant', imageUrl, true);
+            } else {
+                displayMessage('assistant', "Üzgünüm, görsel oluşturulamadı. Lütfen prompt'u daha detaylı ve İngilizce deneyin.");
+            }
+
+        } catch (error) {
+            console.error("Görsel Üretim Hatası:", error);
+            displayAlert("Görsel Üretimi sırasında kritik bir hata oluştu. Lütfen konsol loglarını kontrol edin.");
+            displayMessage('assistant', "Görsel üretim servisine ulaşılamadı. Birkaç dakika sonra tekrar deneyin.");
+        }
+    }
+
+
+    // --- PRO FONKSİYON 3 & 4 & 5: TEXT/CODE/REPORT/VIDEO GENERATION ---
+
+    async function generateTextBasedResponse(prompt, mode) {
+        const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL}:generateContent?key=${apiKey}`;
+
+        // Yeni Kürtçe/Pirzimanî System Prompt'u
+        let systemPrompt = "Tu KÜRDGPT PRO yî, arîkarê herî pêşketî yê zimanê Kurdî (Kurmancî) yî. Zimanê te yê sereke Kurdî ye. Her gava ku bikarhêner bi Kurdî binivîse, tu bi Kurdî bersiv didî. Lê heke bikarhêner bi zimanekî din (wek Tirkî, Îngilîzî) pirs bike û bixwaze, tu yê bi wî zimanî jî bersiv bidî. Bersivên te divê berfireh, rast û profesyonel bin. Zimanê bersivê her tim zimanê dawî yê bikarhêner e. ";
+        let tools = [{ "google_search": {} }]; 
+
+        if (mode === 'CODE') {
+            systemPrompt += " Wekî pêşdebirê nermalavê yê cîhanî, divê tu koda xwestî bi şîrove û sînîfên guncav (di zimanê bersivê de) binivîsî û encamê rasterast di bloka kodê de bidî. ";
+        } else if (mode === 'PDF_REPORT') {
+             systemPrompt += " Wekî pisporê raporên akademîk, divê tu bi naveroka ku ji zimanê bersivê re guncav e, belgeyek LaTeX ya bêkêmasî û ji bo berhevkirinê amade biafirînî. Tenê koda LaTeX bide.";
+        } else if (mode === 'VIDEO_SCRIPT') {
+             systemPrompt += " Wekî nivîskarê senaryoyê yê afirîner, divê tu senaryoyek vîdyoyê ya balkêş bi formatkirina SAHNE, GÖRSEL û SES/DİYALOG (di zimanê bersivê de) biafirînî.";
+        }
+        
+        const payload = {
+            contents: [{ parts: [{ text: prompt }] }],
+            tools: tools,
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+        };
+
+        const options = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        };
+
+        try {
+            const response = await fetchWithBackoff(textApiUrl, options);
+            const result = await response.json();
+            
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "Yanıt alınamadı.";
+            
+            if (mode === 'PDF_REPORT') {
+                displayMessage('assistant', text, false, true);
+            } else {
+                displayMessage('assistant', text);
+            }
+
+        } catch (error) {
+            console.error("API Çağrısı Hatası:", error);
+            displayAlert("Metin/Kod/Rapor oluşturma sırasında kritik bir hata oluştu. Lütfen konsol loglarını kontrol edin.");
+            displayMessage('assistant', "API bağlantı hatası oluştu. Lütfen tekrar deneyin.");
+        }
+    }
+
+    // --- TEMEL AKIŞ KONTROLÜ ---
+
+    window.handleSend = async () => {
+        const prompt = userInput.value.trim();
+        
+        if (currentMode === 'VISUAL_INPUT' && !uploadedImageBase64) {
+             displayMessage('assistant', "Lütfen bir görsel yükleyin veya modu değiştirin.");
+             return;
+        }
+
+        if (!prompt && currentMode !== 'VISUAL_INPUT') return;
+
+        // Kullanıcı mesajını göster
+        let userDisplay = prompt;
+        if (currentMode === 'VISUAL_INPUT' && uploadedImageBase64) {
+            userDisplay = `[Görsel] - ${prompt}`;
+        }
+        displayMessage('user', userDisplay);
+        userInput.value = '';
+        userInput.style.height = 'auto';
+
+        // UI durumu ayarı
+        sendButton.disabled = true;
+        userInput.disabled = true;
+        loadingIndicator.classList.remove('hidden');
+        errorAlert.classList.add('hidden'); // Yeni istekte eski hatayı gizle
+        scrollToBottom();
+
+        try {
+            if (currentMode === 'TEXT' || currentMode === 'CODE' || currentMode === 'PDF_REPORT' || currentMode === 'VIDEO_SCRIPT') {
+                await generateTextBasedResponse(prompt, currentMode);
+            } else if (currentMode === 'IMAGE_GEN') {
+                await generateImage(prompt);
+            } else if (currentMode === 'VISUAL_INPUT' && uploadedImageBase64) {
+                await generateVisualQuery(prompt, uploadedImageBase64);
+            }
+        } finally {
+            // UI durumu sıfırlama
+            sendButton.disabled = false;
+            userInput.disabled = false;
+            loadingIndicator.classList.add('hidden');
+            userInput.focus();
+            
+            // Görsel input modunda görseli temizle
+            if (currentMode === 'VISUAL_INPUT') {
+                clearImage();
+            }
+        }
+    };
+
+    // Klavye Olayı
+    userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    });
+
+    // Sayfa yüklendiğinde varsayılan ayarları yap
+    window.onload = () => {
+        autoExpand(userInput);
+        scrollToBottom();
+        setMode('TEXT'); // Varsayılan mod: Sohbet
+    };
+
+</script>
+
+</body>
+</html>
+
